@@ -20,8 +20,6 @@ import {
   useAddress,
   useContract,
   useContractType,
-  useCreateAuctionListing,
-  useCreateDirectListing,
   useOwnedNFTs,
 } from "@thirdweb-dev/react";
 import {
@@ -34,6 +32,8 @@ import {
 } from "@thirdweb-dev/sdk/evm";
 import { CurrencySelector } from "components/shared/CurrencySelector";
 import { SolidityInput } from "contract-ui/components/solidity-inputs";
+import { useCreateAuctionBatch } from "contract-ui/hooks/useCreateAuctionBatch";
+import { useCreateDirectBatch } from "contract-ui/hooks/useCreateDirectBatch";
 import { formatEther, parseEther } from "ethers/lib/utils";
 import { useTrack } from "hooks/analytics/useTrack";
 import { useTxNotifications } from "hooks/useTxNotifications";
@@ -55,7 +55,7 @@ import {
 import { NFTMediaWithEmptyState } from "tw-components/nft-media";
 import { shortenIfAddress } from "utils/usedapp-external";
 
-export interface ListForm
+interface ListForm
   extends Omit<NewDirectListing, "type">,
     Omit<NewAuctionListing, "type"> {
   selected?: WalletNFT;
@@ -70,8 +70,8 @@ type NFTMintForm = {
   contractQuery:
     | UseContractResult<Marketplace>
     | UseContractResult<MarketplaceV3>;
-  directList: ReturnType<typeof useCreateDirectListing>;
-  auctionList: ReturnType<typeof useCreateAuctionListing>;
+  directBatch: ReturnType<typeof useCreateDirectBatch>;
+  auctionBatch: ReturnType<typeof useCreateAuctionBatch>;
   formId: string;
   type?: "direct-listings" | "english-auctions";
 };
@@ -86,10 +86,10 @@ const auctionTimes = [
   { label: "1 year", value: 60 * 60 * 24 * 365 },
 ];
 
-export const CreateListingsForm: React.FC<NFTMintForm> = ({
+export const CreateBatchListingsForm: React.FC<NFTMintForm> = ({
   contractQuery,
-  directList,
-  auctionList,
+  directBatch,
+  auctionBatch,
   formId,
   type,
 }) => {
@@ -167,80 +167,9 @@ export const CreateListingsForm: React.FC<NFTMintForm> = ({
           return;
         }
         if (formData.listingType === "direct") {
-          directList.mutate(
-            {
-              assetContractAddress: formData.selected.contractAddress,
-              tokenId: formData.selected.tokenId,
-              currencyContractAddress: formData.currencyContractAddress,
-              quantity: formData.quantity,
-              startTimestamp: formData.startTimestamp,
-              // Hard code to year 2100 for now
-              pricePerToken: formData.buyoutPricePerToken,
-              endTimestamp: new Date(4102444800000),
-
-              // Marketplace v1 only params
-              buyoutPricePerToken: formData.buyoutPricePerToken,
-              // Hard code to 100 years for now
-              listingDurationInSeconds: (60 * 60 * 24 * 365 * 100).toString(),
-            },
-            {
-              onSuccess: () => {
-                onSuccess();
-                modalContext.onClose();
-              },
-              onError,
-            },
-          );
+          directBatch.mutate();
         } else if (formData.listingType === "auction") {
-          auctionList.mutate(
-            {
-              assetContractAddress: formData.selected.contractAddress,
-              tokenId: formData.selected.tokenId,
-              quantity: formData.quantity,
-              startTimestamp: formData.startTimestamp,
-              currencyContractAddress: formData.currencyContractAddress,
-              minimumBidAmount: mulDecimalByQuantity(
-                formData.reservePricePerToken,
-                formData.quantity,
-              ),
-              buyoutBidAmount: mulDecimalByQuantity(
-                formData.buyoutPricePerToken,
-                formData.quantity,
-              ),
-              // Create endTimestamp with the current date + listingDurationInSeconds
-              endTimestamp: new Date(
-                new Date().getTime() +
-                  parseInt(formData.listingDurationInSeconds) * 1000,
-              ),
-
-              // Marketplace v1 only params
-              reservePricePerToken: formData.reservePricePerToken,
-              buyoutPricePerToken: formData.buyoutPricePerToken,
-              listingDurationInSeconds: formData.listingDurationInSeconds,
-            },
-            {
-              onSuccess: () => {
-                onSuccess();
-                trackEvent({
-                  category: "marketplace",
-                  action: "add-listing",
-                  label: "success",
-                  network,
-                });
-                modalContext.onClose();
-              },
-              onError: (error) => {
-                trackEvent({
-                  category: "marketplace",
-                  action: "add-listing",
-                  label: "error",
-                  network,
-                  error,
-                });
-                onError(error);
-              },
-            },
-          );
+          auctionBatch.mutate();
         }
       })}
     >
@@ -456,6 +385,91 @@ export const CreateListingsForm: React.FC<NFTMintForm> = ({
           </FormControl>
         </>
       )}
+      <button
+        onClick={() => {
+          form.handleSubmit((formData) => {
+            if (!formData.selected) {
+              return;
+            }
+            if (formData.listingType === "direct") {
+              directBatch.addForm({
+                assetContractAddress: formData.selected.contractAddress,
+                tokenId: formData.selected.tokenId,
+                currencyContractAddress: formData.currencyContractAddress,
+                quantity: formData.quantity,
+                startTimestamp: formData.startTimestamp,
+                // Hard code to year 2100 for now
+                pricePerToken: formData.buyoutPricePerToken,
+                endTimestamp: new Date(4102444800000),
+
+                // Marketplace v1 only params
+                buyoutPricePerToken: formData.buyoutPricePerToken,
+                // Hard code to 100 years for now
+                listingDurationInSeconds: (60 * 60 * 24 * 365 * 100).toString(),
+              });
+            } else if (formData.listingType === "auction") {
+              auctionBatch.addForm({
+                assetContractAddress: formData.selected.contractAddress,
+                tokenId: formData.selected.tokenId,
+                quantity: formData.quantity,
+                startTimestamp: formData.startTimestamp,
+                currencyContractAddress: formData.currencyContractAddress,
+                minimumBidAmount: mulDecimalByQuantity(
+                  formData.reservePricePerToken,
+                  formData.quantity,
+                ),
+                buyoutBidAmount: mulDecimalByQuantity(
+                  formData.buyoutPricePerToken,
+                  formData.quantity,
+                ),
+                // Create endTimestamp with the current date + listingDurationInSeconds
+                endTimestamp: new Date(
+                  new Date().getTime() +
+                    parseInt(formData.listingDurationInSeconds) * 1000,
+                ),
+
+                // Marketplace v1 only params
+                reservePricePerToken: formData.reservePricePerToken,
+                buyoutPricePerToken: formData.buyoutPricePerToken,
+                listingDurationInSeconds: formData.listingDurationInSeconds,
+              });
+            }
+          });
+        }}
+      >
+        Add Listing
+      </button>
+      <div>
+        {directBatch?.directForms[0] && (
+          <div>
+            {directBatch?.directForms.map((listing: any, i: number) => (
+              <div>
+                <p>{"Direct Listing #" + i}</p>
+                <p>{"Contract Address: " + listing.assetContractAddress}</p>
+                <p>{"Token ID: " + listing.tokenId}</p>
+                <p>{"Quantity: " + listing.quantity}</p>
+                <p>{"Price Per Token: " + listing.pricePerToken}</p>
+                <p>{"Listing Duration: " + listing.listingDurationInSeconds}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        {auctionBatch?.auctionForms[0] && (
+          <div>
+            {auctionBatch?.auctionForms.map((listing: any, i: number) => (
+              <div>
+                <p>{"Auction Listing #" + i}</p>
+                <p>{"Contract Address: " + listing.assetContractAddress}</p>
+                <p>{"Token ID: " + listing.tokenId}</p>
+                <p>{"Quantity: " + listing.quantity}</p>
+                <p>{"Minimum Bid Amount: " + listing.minimumBidAmount}</p>
+                <p>{"Buyout Bid Amount: " + listing.buyoutBidAmount}</p>
+                <p>{"Listing Duration: " + listing.listingDurationInSeconds}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </Stack>
   );
 };

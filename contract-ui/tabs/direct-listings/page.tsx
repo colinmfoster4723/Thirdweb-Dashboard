@@ -4,6 +4,7 @@ import { DirectListingsTable } from "./components/table";
 import { Flex } from "@chakra-ui/react";
 import { useContract } from "@thirdweb-dev/react";
 import { Heading } from "tw-components";
+import { CreateBatchListingButton } from "../shared-components/batch-list-button";
 
 interface ContractDirectListingsPageProps {
   contractAddress?: string;
@@ -32,6 +33,11 @@ export const ContractDirectListingsPage: React.FC<
             contractQuery={contractQuery}
             type="direct-listings"
             createText="Create Direct Listing"
+          />
+          <CreateBatchListingButton
+            contractQuery={contractQuery}
+            type="direct-listings"
+            createText="Create Direct Listing Batch"
           />
         </Flex>
       </Flex>

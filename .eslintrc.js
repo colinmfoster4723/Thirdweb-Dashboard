@@ -87,6 +87,12 @@ module.exports = {
     "prefer-const": "error",
     "prefer-object-spread": "error",
     "prefer-template": "error",
+    "prettier/prettier": [
+      "error",
+      {
+        endOfLine: "auto",
+      },
+    ],
     "quote-props": ["error", "as-needed"],
     // 'sort-imports': ['warn', { ignoreDeclarationSort: true }],
     // 'sort-keys': ['warn', 'asc', { natural: true }],

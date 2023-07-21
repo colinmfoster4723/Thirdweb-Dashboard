@@ -29,7 +29,7 @@ import {
 } from "@thirdweb-dev/sdk/evm";
 import { ContractFunctionsOverview } from "components/contract-functions/contract-functions";
 import { replaceDeployerAddress } from "components/explore/publisher";
-import { ShareButton } from "components/share-buttom";
+import { ShareButton } from "components/share-button";
 import { Extensions } from "contract-ui/tabs/overview/components/Extensions";
 import { format } from "date-fns";
 import { correctAndUniqueLicenses } from "lib/licenses";
